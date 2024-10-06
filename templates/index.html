@@ -1,1 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online C++ IDE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400&display=swap');
+
+        body {
+            font-family: 'Fira Code', monospace;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+
+        #editor {
+            height: 500px;
+            border: 1px solid #ddd;
+        }
+
+        #output {
+            background-color: #f3f4f6;
+            border: 1px solid #ddd;
+            line-height: 1.5;
+            padding: 1rem;
+            font-size: 14px;
+            overflow: auto;
+            height: 150px;
+        }
+    </style>
+    <script src="https://unpkg.com/monaco-editor@0.33.0/min/vs/loader.js"></script>
+</head>
+
+<body class="p-8 min-h-screen">
+
+    <div class="flex max-w-7xl mx-auto h-full">
+        <!-- Left column: Code editor -->
+        <div class="w-1/2 pr-4">
+            <div class="bg-white p-4 rounded-lg shadow-lg h-full flex flex-col">
+                <div class="bg-gray-100 p-2 rounded-t-lg text-gray-800 font-semibold flex justify-between items-center">
+                    <span>C++ Code Editor</span>
+                    <button id="run"
+                        class="bg-blue-500 px-4 py-1 text-white rounded hover:bg-blue-600 transition duration-200">
+                        Run Code
+                    </button>
+                </div>
+                <div id="editor" class="w-full h-full rounded-b-lg"></div>
+            </div>
+        </div>
+
+        <!-- Right column: Screenshot and Output -->
+        <div class="w-1/2 pl-4 flex flex-col">
+            <!-- Screenshot Section -->
+            <div class="bg-white p-4 rounded-lg shadow-lg mb-4 flex-grow">
+                <h2 class="text-lg font-semibold text-gray-800 mb-2">Screenshot</h2>
+                <img id="screenshot" class="max-w-full h-auto rounded-md shadow-lg hidden" src="" alt="Screenshot" />
+            </div>
+
+            <!-- Output Section -->
+            <div class="bg-white p-4 rounded-lg shadow-lg mb-4 flex-grow">
+                <h2 class="text-lg font-semibold text-gray-800 mb-2">Output</h2>
+                <div id="loading" class="text-blue-500 font-semibold hidden">Running your code...</div>
+                <div id="output" class="rounded-lg"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let editor;
+
+        require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.33.0/min/vs' } });
+        require(['vs/editor/editor.main'], function () {
+            editor = monaco.editor.create(document.getElementById('editor'), {
+                value: [
+                    '// Write your C++ code here...',
+                    'int main() {',
+                    '\treturn 0;',
+                    '}'
+                ].join('\n'),
+                language: 'cpp',
+                theme: 'vs-dark', // You can change this to 'vs-light' or other themes.
+            });
+        });
+
+        document.getElementById('run').onclick = async function () {
+            const code = editor.getValue();
+            const loadingIndicator = document.getElementById('loading');
+            const outputElement = document.getElementById('output');
+            const screenshotElement = document.getElementById('screenshot');
+
+            // Show loading indicator
+            loadingIndicator.classList.remove('hidden');
+            outputElement.textContent = '';
+            screenshotElement.classList.add('hidden');
+
+            const response = await fetch('/run', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ code: code })
+            });
+
+            const result = await response.json();
+
+            // Hide loading indicator
+            loadingIndicator.classList.add('hidden');
+
+            // Display output
+            outputElement.textContent = result.error || result.message;
+
+            // Display screenshot if available
+            if (result.screenshot) {
+                screenshotElement.src = result.screenshot + '?' + new Date().getTime(); // Append timestamp to avoid caching
+                screenshotElement.classList.remove('hidden'); // Show the image
+            }
+        };
+    </script>
+
+</body>
+
+</html>
